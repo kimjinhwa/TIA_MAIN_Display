@@ -303,7 +303,7 @@ void handleData(ModbusMessage response, uint32_t token)
   if(token=='T'){
     for (int i = 0; i < 40; i++)
     {
-      cellvalue[i].temperature = (int16_t)integerArray[i] -4000;
+      cellvalue[i].temperature = (int16_t)integerArray[i] ;
       //ESP_LOGI("RECEIVE", "Temperature=%d", cellvalue[i].temperature);
     }
   };//온도를 요청
