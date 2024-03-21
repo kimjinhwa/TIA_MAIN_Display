@@ -58,6 +58,7 @@ void onReceive(int len)
     for (i = 3; startAddress < len / 2; startAddress++, i++)
     {
       cellvalue[startAddress].temperature = (int16_t)((receiveData[i * 2] << 8 | receiveData[i * 2 + 1]) );
+      cellvalue[startAddress].temperature -= 4000;
     }
   }
   for (i = 0; i < len / 2; i++)

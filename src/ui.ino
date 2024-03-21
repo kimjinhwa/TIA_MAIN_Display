@@ -4,6 +4,7 @@
 #include <lvgl.h>
 #include <Arduino_GFX_Library.h>
 #include <TFT_eSPI.h>
+#include <esp_task_wdt.h>
 #include "src/ui.h"
 #include <EEPROM.h>
 #include <BluetoothSerial.h>
@@ -20,6 +21,7 @@
 #define TFT_BL 2
 #define BRIGHT 155 
 #define LED_OFF_TIME 600 
+#define WDT_TIMEOUT 120 
 uint16_t lcdOntime=0;
 
 //BluetoothSerial SerialBT;
@@ -109,7 +111,7 @@ void readnWriteEEProm()
   {
     initRomData.HighVoltage = 1445;
     initRomData.LowVoltage = 1050;
-    initRomData.HighImp = 10000;
+    initRomData.HighImp = 1000;
     initRomData.HighTemp = 60;
     initRomData.alarmSetStatus = 0;
     EEPROM.writeByte(0,0x55);
@@ -130,10 +132,6 @@ void setup()
   //SerialBT.begin("TIMP_DISPLAY");
   lsFile.littleFsInitFast(0);
 
-  initRomData.HighVoltage = 0;
-  initRomData.LowVoltage = 0;
-  initRomData.HighImp = 0;
-  initRomData.HighTemp = 0;
   // while (!Serial);
   Serial.println("LVGL Benchmark Demo");
 
@@ -222,7 +220,8 @@ void setup()
   xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
   xTaskCreate(modbusService, "modbusService", 5000, NULL, 1, &h_modbusService);
   //i2csetup();
-
+  esp_task_wdt_init(WDT_TIMEOUT, true);
+  esp_task_wdt_add(NULL);
 };
 static int interval = 1000;
 static unsigned long previousmills = 0;
@@ -234,6 +233,7 @@ void loop()
 {
   now = millis();
   void *parameters;
+  esp_task_wdt_reset();
   if ((now - previousmills > every100ms))
   {
     previousmills = now;

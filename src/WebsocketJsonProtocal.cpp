@@ -147,8 +147,8 @@ void setCelldataToDisplay(uint8_t display)
   };
   impadanceAverage /= 20;
   voltageAverage = TotalVoltage / 20;
-  ESP_LOGI("AVG","voltageAverage %f",voltageAverage );
-  ESP_LOGI("AVG","impadanceAverage %f",impadanceAverage );
+  // ESP_LOGI("AVG","voltageAverage %f",voltageAverage );
+  // ESP_LOGI("AVG","impadanceAverage %f",impadanceAverage );
   lv_obj_t *ui_vol_imp_Array_1[20][2] =
       {
           {ui_voltage1, ui_impedance1},
@@ -203,7 +203,7 @@ void setCelldataToDisplay(uint8_t display)
   lv_label_set_text(ui_AverageImpendance, String(String("AIMP:") + String(impadanceAverage, 2) + String("m")).c_str());
   
   int j;
-  ESP_LOGI("start_i" ,"%d",start_i );
+//  ESP_LOGI("start_i" ,"%d",start_i );
   for (i=0, j= start_i ; i < 20; i++,j++)
   {
      lv_label_set_recolor((lv_obj_t *)ui_vol_imp_Array_1[i][0], true);
@@ -221,65 +221,12 @@ void setCelldataToDisplay(uint8_t display)
   //   lv_label_set_text(ui_CompanyLabel1, "STATUS : NORMAL");
 
 }
-  // Serial.printf("impedanceAverage=%f\n", impadanceAverage);
-  // //Serial.printf("bmsid=%d vol=%d amp=%d cellCount=%d\n", bmsid, vol, amp, totalCellCount);
-  // //Serial.printf("cellCount=%d\n", totalCellCount);
-  // //Serial.printf("cellString=%d(%d,%d,%d,%d)\n", cell_string_count, cell_string1, cell_string2, cell_string3, cell_string4);
-  // Serial.printf("value(0) v: %02.3f,r: %02.3f,c: %d\n", (float)doc["value"][0][0], (float)doc["value"][0][1], (uint16_t)doc["value"][0][2]);
-  // Serial.printf("value(1) v: %02.3f,r: %02.3f,c: %d\n", (float)doc["value"][1][0], (float)doc["value"][1][1], (uint16_t)doc["value"][1][2]);
-// void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-
-// 	switch(type) {
-// 		case WStype_DISCONNECTED:
-// 			USE_SERIAL.printf("[WSc] Disconnected!\n");
-// 			break;
-// 		case WStype_CONNECTED:
-// 			USE_SERIAL.printf("[WSc] Connected to url: %s\n", payload);
-
-// 			// send message to server when Connected
-// 			webSocket.sendTXT("Connected");
-// 			break;
-// 		case WStype_TEXT:
-//       if(deserializeJson(doc,payload)){
-//         const char *message = doc["message"];
-//         const char *content = doc["content"];
-//         //USE_SERIAL.printf("[WSc] JSON : %s %s\n", message ,content);
-//         lv_label_set_text(ui_CompanyLabel1,content);
-//       }
-// 			USE_SERIAL.printf("[WSc] get text: %s\n", payload);
-
-// 			// send message to server
-// 			 //webSocket.sendTXT("message here");
-// 			break;
-// 		case WStype_BIN:
-// 			USE_SERIAL.printf("[WSc] get binary length: %u\n", length);
-// 			//hexdump(payload, length);
-//       memcpy((uint8_t *)cellvalue,(uint8_t *)payload,length);
-//       for(int i=0;i<40;i++){
-//          if((i+1)%5==0)
-//          Serial.printf("\n%3.2f\t%3.2f\t%2d\t",cellvalue[i].voltage,cellvalue[i].impendance,cellvalue[i].temperature);
-//          else
-//          Serial.printf("%3.2f\t%3.2f\t%2d\t",cellvalue[i].voltage,cellvalue[i].impendance,cellvalue[i].temperature);
-//       }
-//       setCelldataToDisplay(nowWindows);
-// 			// send data to server
-// 			//webSocket.sendBIN(payload, length);
-// 			break;
-// 		case WStype_ERROR:			
-// 		case WStype_FRAGMENT_TEXT_START:
-// 		case WStype_FRAGMENT_BIN_START:
-// 		case WStype_FRAGMENT:
-// 		case WStype_FRAGMENT_FIN:
-// 			break;
-// 	}
-
-// }
-
 // This is the Arduino main loop function.
 
 String makeVoltageString(uint16_t pos,float average)
 {
     String strVoltage;
+    char tempbuf[80]; 
     isHighVoltage=false;
     isLowVoltage=false;
     isHighImpedance=false;
@@ -300,7 +247,8 @@ String makeVoltageString(uint16_t pos,float average)
       strVoltage =cellvalue[pos].voltage;
     strVoltage +="V";
     strVoltage +="(";
-    strVoltage += String(cellvalue[pos].temperature) ;
+    sprintf(tempbuf,"%3.1f",cellvalue[pos].temperature/100.0);
+    strVoltage += String(tempbuf) ;
     strVoltage +=")";
   return strVoltage ;
 }
@@ -310,7 +258,10 @@ String makeImdedanceString(uint16_t pos,float average)
   strImpdance = String(cellvalue[pos].impendance);
 
   //if (cellvalue[pos].impendance > (cellvalue[pos].impendance/average))
-  if ( 0.8 > (cellvalue[pos].impendance/average ||  (cellvalue[pos].impendance/average) > 1.2) || cellvalue[pos].impendance > initRomData.HighImp/100.0 )
+  // if ( 0.8 > (cellvalue[pos].impendance/average ||  
+  //    (cellvalue[pos].impendance/average) > 1.2) || 
+  //    cellvalue[pos].impendance > initRomData.HighImp )
+  if ( cellvalue[pos].impendance > initRomData.HighImp )
   {
       strImpdance = "#ff0000 "; // red
       strImpdance += cellvalue[pos].impendance;
@@ -330,7 +281,7 @@ void handleData(ModbusMessage response, uint32_t token)
   // for (auto& byte : response) {
   //   Serial.printf("%02X ", byte);
   // }
-  ESP_LOGI("MODBUS","");
+  //ESP_LOGI("MODBUS","");
   std::vector<uint8_t>allData(response.begin(),response.end());
   auto startIndex = allData.begin()+3;
   length=(response.size()-3)/2; //실제 데이타의 수 
@@ -352,7 +303,7 @@ void handleData(ModbusMessage response, uint32_t token)
   if(token=='T'){
     for (int i = 0; i < 40; i++)
     {
-      cellvalue[i].temperature = (int16_t)integerArray[i] - 40;
+      cellvalue[i].temperature = (int16_t)integerArray[i] -4000;
       //ESP_LOGI("RECEIVE", "Temperature=%d", cellvalue[i].temperature);
     }
   };//온도를 요청
@@ -394,25 +345,6 @@ void handleData(ModbusMessage response, uint32_t token)
 
   }; // 설정값을 요청 시간 포함
   setCelldataToDisplay(nowWindows);
-  /*
-  for(int i=0;i<120;i++){
-    Serial.printf("%d ",integerArray[i] );
-  }
-  Serial.println("");
-  Serial.println("");
-  Serial.println("");
-  for(int i=0;i<40;i++){
-    cellvalue[i].voltage = static_cast<float>(integerArray[i])/100.0f; 
-    cellvalue[i].temperature= (int16_t)integerArray[i+40]-40; 
-    cellvalue[i].impendance= static_cast<float>(integerArray[i+80])/100.0f; 
-  }
-  Serial.println("");
-  Serial.println("");
-  Serial.println("");
-  for(int i=0;i<40;i++){
-    Serial.printf("\n%f %d %f",cellvalue[i].voltage,cellvalue[i].temperature,cellvalue[i].impendance );
-  }
-*/
 }
 void handleError(Error error, uint32_t token) 
 {
@@ -542,3 +474,22 @@ void modbusService(void *parameters)
 //   // }
 //   delay(10); // Delay a second between loops.
 // } // End of loop
+  /*
+  for(int i=0;i<120;i++){
+    Serial.printf("%d ",integerArray[i] );
+  }
+  Serial.println("");
+  Serial.println("");
+  Serial.println("");
+  for(int i=0;i<40;i++){
+    cellvalue[i].voltage = static_cast<float>(integerArray[i])/100.0f; 
+    cellvalue[i].temperature= (int16_t)integerArray[i+40]-40; 
+    cellvalue[i].impendance= static_cast<float>(integerArray[i+80])/100.0f; 
+  }
+  Serial.println("");
+  Serial.println("");
+  Serial.println("");
+  for(int i=0;i<40;i++){
+    Serial.printf("\n%f %d %f",cellvalue[i].voltage,cellvalue[i].temperature,cellvalue[i].impendance );
+  }
+*/
