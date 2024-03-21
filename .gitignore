@@ -1,4 +1,6 @@
 .pio
-build/
-test/
-lib/lvgl/
+build
+lib/lvgl
+.vscode
+test
+.gitignore
