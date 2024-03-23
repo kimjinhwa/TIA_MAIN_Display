@@ -58,7 +58,7 @@ bool isHighImpedance=false;
 ModbusClientRTU MB;
 
 static const char *TAG = "WebsocketJsonProtocal";
-StaticJsonDocument<3072> doc;
+//StaticJsonDocument<3072> doc;
 
 String makeImdedanceString(uint16_t pos,float average);
 String makeVoltageString(uint16_t pos,float average);
@@ -112,6 +112,22 @@ void hexdump(const void *mem, uint32_t len, uint8_t cols = 16) {
 		src++;
 	}
 	USE_SERIAL.printf("\n");
+}
+void timeDisplay() 
+{
+  struct tm timeinfo;
+  if (!getLocalTime(&timeinfo))
+  {
+    Serial.println("Failed to obtain time");
+  }
+  char timeString[30];
+  strftime(timeString, sizeof(timeString), "%Y-%m-%d", &timeinfo);
+  lv_label_set_text(ui_DateLabel, timeString);
+  lv_label_set_text(ui_DateLabel1, timeString);
+  strftime(timeString, sizeof(timeString), "%p %I:%M:%S", &timeinfo);
+  lv_label_set_text(ui_TimeLabel, timeString);
+  lv_label_set_text(ui_TimeLabel1, timeString);
+
 }
 void setCelldataToDisplay(uint8_t display)
 {
@@ -172,23 +188,7 @@ void setCelldataToDisplay(uint8_t display)
           {ui_voltage19, ui_impedance19},
           {ui_voltage20, ui_impedance20}
           };
-
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo))
-  {
-    Serial.println("Failed to obtain time");
-  }
-  char timeString[30];
-  strftime(timeString, sizeof(timeString), "%Y-%m-%d", &timeinfo);
-  lv_label_set_text(ui_DateLabel, timeString);
-  lv_label_set_text(ui_DateLabel1, timeString);
-  // lv_label_set_text(ui_DateLabel, "");
-  // lv_label_set_text(ui_DateLabel1, "");
-  strftime(timeString, sizeof(timeString), "%p %I:%M:%S", &timeinfo);
-  lv_label_set_text(ui_TimeLabel, timeString);
-  lv_label_set_text(ui_TimeLabel1, timeString);
-  // lv_label_set_text(ui_TimeLabel, "");
-  // lv_label_set_text(ui_TimeLabel1, "");
+  timeDisplay();
 
   lv_label_set_recolor(ui_TotalVoltage, true);
   lv_label_set_text(ui_TotalVoltage, String(String("Total:") + String(TotalVoltage, 0) + String("V")).c_str());
@@ -362,7 +362,7 @@ void modbusSetup()
 {
   MB.onDataHandler(&handleData);
   MB.onErrorHandler(&handleError);
-  MB.setTimeout(100);
+  MB.setTimeout(1000);
   MB.begin(Serial1);
 
 } // End of setup.
@@ -380,22 +380,28 @@ const long interval_5s = 5000;
 static unsigned long previousMillis_60 = 0;  
 const long interval_60s = 60000;  
 
-char requestContent[4]={'V','T','I',0};
+char requestContent[4]={'V','T','I','E'};
+uint16_t requestContentLoop=0;
+
 void modbusService(void *parameters)
 {
   unsigned long now;
-  modbusSetup();
+  //modbusSetup();
   Error err;
-  uint16_t requestContentLoop=0;
-  for (;;)
+  String strStatus;
+  //for (;;)
   {
-    if (requestContentLoop == 3)
-      requestContentLoop = 0;
+    if (requestContentLoop == 4) requestContentLoop = 0;
     now = millis();
     if (now - previousMillis_3 >= interval_3s)
     {
       //Serial.println("GET_BMS_DATA Loop");
-      lv_label_set_text(ui_CompanyLabel1, "Data request....");
+      ESP_LOGI(TAG,"\nData request %d %c",requestContentLoop,requestContent[requestContentLoop] );
+      strStatus = "Data request.."  ;
+      strStatus += requestContentLoop;
+      strStatus += " ";
+      strStatus += requestContent[requestContentLoop] ;
+      lv_label_set_text(ui_CompanyLabel1, strStatus.c_str() );
       // 전압을 읽어온다.
       if (requestContent[requestContentLoop] == 'V')
       {
@@ -412,84 +418,31 @@ void modbusService(void *parameters)
         requestAddress = 80;
         requestLength = 40;
       }
+      else if (requestContent[requestContentLoop] == 'E')
+      {
+        requestAddress = 120;
+        requestLength = 10;
+        err = MB.addRequest('E', 1, READ_INPUT_REGISTER, requestAddress, requestLength);
+        if (err != SUCCESS)
+        {
+          ModbusError e(err);
+          Serial.printf("Error creating request: %02X - %s\n", (int)e, (const char *)e);
+        }
+      }
       err = MB.addRequest(requestContent[requestContentLoop], 1, READ_INPUT_REGISTER, requestAddress, requestLength);
       if (err != SUCCESS)
       {
         ModbusError e(err);
         Serial.printf("Error creating request: %02X - %s\n", (int)e, (const char *)e);
       }
+      requestContentLoop = requestContentLoop+1;
       previousMillis_3 = now;
     }
-    if (now - previousMillis_5 >= interval_5s)
+    if (now - previousMillis_1 >= interval_1s)
     {
-      requestAddress = 120;
-      requestLength = 10;
-      err = MB.addRequest('E', 1, READ_INPUT_REGISTER, requestAddress, requestLength);
-      if (err != SUCCESS)
-      {
-        ModbusError e(err);
-        Serial.printf("Error creating request: %02X - %s\n", (int)e, (const char *)e);
-      }
-      previousMillis_5 = now;
+      timeDisplay();
+      previousMillis_1 = now;
     }
-
-    requestContentLoop++;
-    vTaskDelay(10);
+    vTaskDelay(20);
   };
 }
-
-  // ESP_LOGI(TAG, "Wifi Setting...");
-
-  // WiFi.config(IPAddress(192, 168, 10, 4), IPAddress(0, 0, 0, 0), IPAddress(255, 255, 255, 0));
-  // WiFi.begin(ssid, password);
-  // Serial.println("");
-  // uint16_t loopCount = 300;
-  // while (WiFi.status() != WL_CONNECTED && loopCount--)
-  // {
-  //   delay(10);
-  //   Serial.print(".");
-  // }
-  // if (WiFi.status() == WL_CONNECTED)
-  // {
-  //   Serial.println("");
-  //   Serial.println("WiFi connected");
-  //   Serial.println("IP address: ");
-  //   Serial.println(WiFi.localIP());
-  // }
-// void modbusServiceFunc()
-// {
-//   //  // 시간 문자열 생성
-//   //   char timeString[30];
-//   //   strftime(timeString, sizeof(timeString), "%Y-%m-%d", &timeinfo);
-//   //   strftime(timeString, sizeof(timeString), "%p %I:%M:%S", &timeinfo);
-
-//   //   //HVOL : 12.4V
-
-//   //   Serial.printf("impedanceAverage=%f\n",impadanceAverage);
-//   //   Serial.printf("bmsid=%d vol=%d amp=%d cellCount=%d\n", bmsid, vol, amp, totalCellCount);
-//   //   Serial.printf("cellCount=%d\n", totalCellCount);
-//   //   Serial.printf("cellString=%d(%d,%d,%d,%d)\n", cell_string_count, cell_string1, cell_string2, cell_string3, cell_string4);
-//   //   Serial.printf("value(0) v: %02.3f,r: %02.3f,c: %d\n", (float)doc["value"][0][0], (float)doc["value"][0][1], (uint16_t)doc["value"][0][2]);
-//   //   Serial.printf("value(1) v: %02.3f,r: %02.3f,c: %d\n", (float)doc["value"][1][0], (float)doc["value"][1][1], (uint16_t)doc["value"][1][2]);
-//   // }
-//   delay(10); // Delay a second between loops.
-// } // End of loop
-  /*
-  for(int i=0;i<120;i++){
-    Serial.printf("%d ",integerArray[i] );
-  }
-  Serial.println("");
-  Serial.println("");
-  Serial.println("");
-  for(int i=0;i<40;i++){
-    cellvalue[i].voltage = static_cast<float>(integerArray[i])/100.0f; 
-    cellvalue[i].temperature= (int16_t)integerArray[i+40]-40; 
-    cellvalue[i].impendance= static_cast<float>(integerArray[i+80])/100.0f; 
-  }
-  Serial.println("");
-  Serial.println("");
-  Serial.println("");
-  for(int i=0;i<40;i++){
-    Serial.printf("\n%f %d %f",cellvalue[i].voltage,cellvalue[i].temperature,cellvalue[i].impendance );
-  }
-*/

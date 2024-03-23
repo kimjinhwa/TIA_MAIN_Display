@@ -21,7 +21,7 @@
 #define TFT_BL 2
 #define BRIGHT 155 
 #define LED_OFF_TIME 600 
-#define WDT_TIMEOUT 120 
+#define WDT_TIMEOUT 10 
 uint16_t lcdOntime=0;
 
 //BluetoothSerial SerialBT;
@@ -217,11 +217,12 @@ void setup()
 #ifdef USEWIFI
   wifiOTAsetup() ;
 #endif
-  xTaskCreate(blueToothTask,"blueToothTask",5000,NULL,1,h_pxblueToothTask);
-  xTaskCreate(modbusService, "modbusService", 5000, NULL, 1, &h_modbusService);
+  xTaskCreate(blueToothTask,"blueToothTask",6000,NULL,1,h_pxblueToothTask);
+  //xTaskCreate(modbusService, "modbusService", 6000, NULL, 1, &h_modbusService);
   //i2csetup();
   esp_task_wdt_init(WDT_TIMEOUT, true);
   esp_task_wdt_add(NULL);
+  modbusSetup();
 };
 static int interval = 1000;
 static unsigned long previousmills = 0;
@@ -234,6 +235,7 @@ void loop()
   now = millis();
   void *parameters;
   esp_task_wdt_reset();
+  modbusService(parameters);
   if ((now - previousmills > every100ms))
   {
     previousmills = now;
@@ -247,5 +249,5 @@ void loop()
       ledcWrite(0, 0);
   }
   lv_timer_handler(); /* let the GUI do its work */
-  vTaskDelay(10);
+  vTaskDelay(20);
 }
