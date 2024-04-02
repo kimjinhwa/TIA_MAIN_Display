@@ -21,7 +21,7 @@
 #define TFT_BL 2
 #define BRIGHT 155 
 #define LED_OFF_TIME 600 
-#define WDT_TIMEOUT 10 
+#define WDT_TIMEOUT 3 
 uint16_t lcdOntime=0;
 
 //BluetoothSerial SerialBT;
@@ -249,5 +249,5 @@ void loop()
       ledcWrite(0, 0);
   }
   lv_timer_handler(); /* let the GUI do its work */
-  vTaskDelay(20);
+  vTaskDelay(50);
 }

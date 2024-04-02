@@ -81,8 +81,8 @@ void saveButtenEvent(lv_event_t * e)
     initRomData.HighVoltage = 0; initRomData.LowVoltage = 0; initRomData.HighImp = 0; initRomData.HighTemp = 0;
 
     EEPROM.readBytes(1, (byte *)&initRomData, sizeof(initRomData));
-    Serial.println("\nInitial Memory modified");
-    Serial.printf("\ninit data \n%d %d %d %d",initRomData.HighVoltage,initRomData.LowVoltage,initRomData.HighTemp,initRomData.HighImp);
+    ESP_LOGI("EEPROM","\nInitial Memory modified");
+    ESP_LOGI("EEPROM","\ninit data \n%d %d %d %d",initRomData.HighVoltage,initRomData.LowVoltage,initRomData.HighTemp,initRomData.HighImp);
 }
 void ChangeModuleEvent(lv_event_t * e)
 {
@@ -118,7 +118,7 @@ void timeDisplay()
   struct tm timeinfo;
   if (!getLocalTime(&timeinfo))
   {
-    Serial.println("Failed to obtain time");
+    ESP_LOGI("TIME","Failed to obtain time");
   }
   char timeString[30];
   strftime(timeString, sizeof(timeString), "%Y-%m-%d", &timeinfo);
@@ -275,13 +275,9 @@ String makeImdedanceString(uint16_t pos,float average)
 }
 void handleData(ModbusMessage response, uint32_t token) 
 {
-  Serial.printf("Response: serverID=%d, FC=%d, Token=%08X, length=%d:\n", response.getServerID(), response.getFunctionCode(), token, response.size());
+  //ESP_LOGI("MODBUS","Response: serverID=%d, FC=%d, Token=%08X, length=%d:\n", response.getServerID(), response.getFunctionCode(), token, response.size());
   uint8_t length;
   lv_label_set_text(ui_CompanyLabel1, "Data receive....");
-  // for (auto& byte : response) {
-  //   Serial.printf("%02X ", byte);
-  // }
-  //ESP_LOGI("MODBUS","");
   std::vector<uint8_t>allData(response.begin(),response.end());
   auto startIndex = allData.begin()+3;
   length=(response.size()-3)/2; //실제 데이타의 수 
@@ -334,14 +330,14 @@ void handleData(ModbusMessage response, uint32_t token)
     settimeofday(&tv, NULL);
     gettimeofday(&tv,NULL);
     tm_ptr =  localtime(&tv.tv_sec);
-    ESP_LOGI("TIME","%d-%d-%d %d:%d:%d",
-         tm_ptr->tm_year+1900,
-         tm_ptr->tm_mon,
-         tm_ptr->tm_mday,
-         tm_ptr->tm_hour,
-         tm_ptr->tm_min,
-         tm_ptr->tm_sec
-         );
+    // ESP_LOGI("TIME","%d-%d-%d %d:%d:%d",
+    //      tm_ptr->tm_year+1900,
+    //      tm_ptr->tm_mon,
+    //      tm_ptr->tm_mday,
+    //      tm_ptr->tm_hour,
+    //      tm_ptr->tm_min,
+    //      tm_ptr->tm_sec
+    //      );
 
   }; // 설정값을 요청 시간 포함
   setCelldataToDisplay(nowWindows);
@@ -350,7 +346,7 @@ void handleError(Error error, uint32_t token)
 {
   // ModbusError wraps the error code and provides a readable error message for it
   ModbusError me(error);
-  Serial.printf("Error response: %02X - %s token: %d\n", (int)me, (const char *)me, token);
+  //ESP_LOGI("MODBUS","Error response: %02X - %s token: %d\n", (int)me, (const char *)me, token);
 }
 template <typename T> 
 T generateRandomNumber(T min, T max) {
@@ -395,8 +391,7 @@ void modbusService(void *parameters)
     now = millis();
     if (now - previousMillis_3 >= interval_3s)
     {
-      //Serial.println("GET_BMS_DATA Loop");
-      ESP_LOGI(TAG,"\nData request %d %c",requestContentLoop,requestContent[requestContentLoop] );
+      //ESP_LOGI(TAG,"\nData request %d %c",requestContentLoop,requestContent[requestContentLoop] );
       strStatus = "Data request.."  ;
       strStatus += requestContentLoop;
       strStatus += " ";
@@ -426,14 +421,14 @@ void modbusService(void *parameters)
         if (err != SUCCESS)
         {
           ModbusError e(err);
-          Serial.printf("Error creating request: %02X - %s\n", (int)e, (const char *)e);
+          ESP_LOGI("MODBUS","Error creating request: %02X - %s\n", (int)e, (const char *)e);
         }
       }
       err = MB.addRequest(requestContent[requestContentLoop], 1, READ_INPUT_REGISTER, requestAddress, requestLength);
       if (err != SUCCESS)
       {
         ModbusError e(err);
-        Serial.printf("Error creating request: %02X - %s\n", (int)e, (const char *)e);
+        ESP_LOGI("MODBUS","Error creating request: %02X - %s\n", (int)e, (const char *)e);
       }
       requestContentLoop = requestContentLoop+1;
       previousMillis_3 = now;
