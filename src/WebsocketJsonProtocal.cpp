@@ -6,6 +6,7 @@
 #include "src/ui.h"
 #include "src/ui_events.h"
 #include "main.h"
+#include <esp_task_wdt.h>
 
 
 #define USE_SERIAL Serial
@@ -115,16 +116,22 @@ void hexdump(const void *mem, uint32_t len, uint8_t cols = 16) {
 }
 void timeDisplay() 
 {
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo))
-  {
-    ESP_LOGI("TIME","Failed to obtain time");
-  }
+  //struct tm timeinfo;
+  struct tm *timeinfo;
+  struct timeval tv;
+  gettimeofday(&tv,NULL);
+  timeinfo =  localtime(&tv.tv_sec);
+  // if (!getLocalTime(&timeinfo))
+  // {
+  //   ESP_LOGI("TIME","Failed to obtain time");
+  // }
   char timeString[30];
-  strftime(timeString, sizeof(timeString), "%Y-%m-%d", &timeinfo);
+  strftime(timeString, sizeof(timeString), "%Y-%m-%d", timeinfo);
+  //ESP_LOGI("TIME","obtain time %s",timeString);
   lv_label_set_text(ui_DateLabel, timeString);
   lv_label_set_text(ui_DateLabel1, timeString);
-  strftime(timeString, sizeof(timeString), "%p %I:%M:%S", &timeinfo);
+  strftime(timeString, sizeof(timeString), "%p %I:%M:%S", timeinfo);
+  //ESP_LOGI("TIME","obtain time %s",timeString);
   lv_label_set_text(ui_TimeLabel, timeString);
   lv_label_set_text(ui_TimeLabel1, timeString);
 
@@ -275,12 +282,14 @@ String makeImdedanceString(uint16_t pos,float average)
 }
 void handleData(ModbusMessage response, uint32_t token) 
 {
-  //ESP_LOGI("MODBUS","Response: serverID=%d, FC=%d, Token=%08X, length=%d:\n", response.getServerID(), response.getFunctionCode(), token, response.size());
+  ESP_LOGI("MODBUS","Response: serverID=%d, FC=%d, Token=%08X, length=%d:\n", response.getServerID(), response.getFunctionCode(), token, response.size());
   uint8_t length;
-  lv_label_set_text(ui_CompanyLabel1, "Data receive....");
   std::vector<uint8_t>allData(response.begin(),response.end());
   auto startIndex = allData.begin()+3;
   length=(response.size()-3)/2; //실제 데이타의 수 
+  char lblMessage[125];
+  sprintf(lblMessage, "receive T: %c L:%d" ,token,length) ;
+  lv_label_set_text(ui_CompanyLabel1, lblMessage);
   std::vector<uint8_t>selectedData(startIndex,startIndex+length*2);
   //std::vector<uint16_t>integerArray(selectedData.begin(),selectedData.end());
 // 2바이트씩 묶어서 16비트 정수로 변환
@@ -316,28 +325,28 @@ void handleData(ModbusMessage response, uint32_t token)
     // {
     //   ESP_LOGI("RECEIVE", "TIME=%d", (int16_t)integerArray[i]);
     // }
-    struct tm tm;
+    struct tm tmVal;
     struct tm *tm_ptr;
-    tm.tm_year = (int16_t)integerArray[0] - 1900;
-    tm.tm_mon  = (int16_t)integerArray[1]-1;  // 4월이면 -1을 해서 3을 넣어준다.
-    tm.tm_mday = (int16_t)integerArray[2];
-    tm.tm_hour = (int16_t)integerArray[3];
-    tm.tm_min  = (int16_t)integerArray[4];
-    tm.tm_sec  = (int16_t)integerArray[5];
+    tmVal.tm_year = (int16_t)integerArray[0] - 1900;
+    tmVal.tm_mon  = (int16_t)integerArray[1]-1;  // 4월이면 -1을 해서 3을 넣어준다.
+    tmVal.tm_mday = (int16_t)integerArray[2];
+    tmVal.tm_hour = (int16_t)integerArray[3];
+    tmVal.tm_min  = (int16_t)integerArray[4];
+    tmVal.tm_sec  = (int16_t)integerArray[5];
     struct timeval tv;
-    tv.tv_sec = mktime(&tm);
+    tv.tv_sec = mktime(&tmVal);
     tv.tv_usec = 0;
     settimeofday(&tv, NULL);
     gettimeofday(&tv,NULL);
     tm_ptr =  localtime(&tv.tv_sec);
-    // ESP_LOGI("TIME","%d-%d-%d %d:%d:%d",
-    //      tm_ptr->tm_year+1900,
-    //      tm_ptr->tm_mon,
-    //      tm_ptr->tm_mday,
-    //      tm_ptr->tm_hour,
-    //      tm_ptr->tm_min,
-    //      tm_ptr->tm_sec
-    //      );
+    ESP_LOGI("TIME","%d-%d-%d %d:%d:%d",
+         tm_ptr->tm_year+1900,
+         tm_ptr->tm_mon,
+         tm_ptr->tm_mday,
+         tm_ptr->tm_hour,
+         tm_ptr->tm_min,
+         tm_ptr->tm_sec
+         );
 
   }; // 설정값을 요청 시간 포함
   setCelldataToDisplay(nowWindows);
@@ -384,14 +393,15 @@ void modbusService(void *parameters)
   unsigned long now;
   //modbusSetup();
   Error err;
+  ModbusMessage response;
   String strStatus;
-  //for (;;)
+  for (;;)
   {
     if (requestContentLoop == 4) requestContentLoop = 0;
     now = millis();
     if (now - previousMillis_3 >= interval_3s)
     {
-      //ESP_LOGI(TAG,"\nData request %d %c",requestContentLoop,requestContent[requestContentLoop] );
+      ESP_LOGI(TAG,"\nData request %d %c",requestContentLoop,requestContent[requestContentLoop] );
       strStatus = "Data request.."  ;
       strStatus += requestContentLoop;
       strStatus += " ";
@@ -417,19 +427,38 @@ void modbusService(void *parameters)
       {
         requestAddress = 120;
         requestLength = 10;
-        err = MB.addRequest('E', 1, READ_INPUT_REGISTER, requestAddress, requestLength);
-        if (err != SUCCESS)
-        {
-          ModbusError e(err);
-          ESP_LOGI("MODBUS","Error creating request: %02X - %s\n", (int)e, (const char *)e);
-        }
+        // err = MB.addRequest('E', 1, READ_INPUT_REGISTER, requestAddress, requestLength);
+        // if (err != SUCCESS)
+        // {
+        //   ModbusError e(err);
+        //   ESP_LOGI("MODBUS","Error creating request: %02X - %s\n", (int)e, (const char *)e);
+        // }
       }
-      err = MB.addRequest(requestContent[requestContentLoop], 1, READ_INPUT_REGISTER, requestAddress, requestLength);
-      if (err != SUCCESS)
+      time_t startTime = millis(); 
+      time_t endTime;
+      //err = MB.addRequest(requestContent[requestContentLoop], 1, READ_INPUT_REGISTER, requestAddress, requestLength);
+      int loopCount=0;
+      MB.setTimeout(200);
+      do
       {
-        ModbusError e(err);
-        ESP_LOGI("MODBUS","Error creating request: %02X - %s\n", (int)e, (const char *)e);
-      }
+        response = MB.syncRequest(requestContent[requestContentLoop], 1, READ_INPUT_REGISTER, requestAddress, requestLength);
+        if (response.getError() == SUCCESS)
+        {
+          handleData(response, requestContent[requestContentLoop]);
+          break;
+        }
+        if(loopCount++ >30)break;// 3초
+        esp_task_wdt_reset();
+      } while (response.getError() != SUCCESS);
+      MB.setTimeout(1000);
+      endTime = millis();
+      ESP_LOGI("MODBUS", "syncRequest time %d Error %d(%d)", 
+        endTime - startTime,response.getError(),loopCount);
+      // if (err != SUCCESS)
+      // {
+      //   ModbusError e(err);
+      //   ESP_LOGI("MODBUS","Error creating request: %02X - %s\n", (int)e, (const char *)e);
+      // }
       requestContentLoop = requestContentLoop+1;
       previousMillis_3 = now;
     }
