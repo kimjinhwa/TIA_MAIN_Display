@@ -416,6 +416,7 @@ void modbusService(void *parameters)
   Error err;
   ModbusMessage response;
   String strStatus;
+  modbusSetup();
   for (;;)
   {
     if (requestContentLoop == 4) requestContentLoop = 0;
