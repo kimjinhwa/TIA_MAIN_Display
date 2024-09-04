@@ -5,7 +5,6 @@ SET(SOURCES components/ui_comp_item.c
     ui.c
     components/ui_comp_hook.c
     ui_helpers.c
-    ui_events.c
     fonts/ui_font_Arial.c
     fonts/ui_font_arial14.c
     fonts/ui_font_arial16.c

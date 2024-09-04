@@ -402,6 +402,9 @@ void LittleFileSystem::littleFsInit(int bformat)
 }
 
 extern TaskHandle_t *h_pxblueToothTask;
+extern TaskHandle_t *h_modbusService;
+extern TaskHandle_t *h_WebService;
+
 void LittleFileSystem::df()
 {
   outputStream->printf( "\r\nESP32 Partition table:\r\n");
@@ -418,12 +421,15 @@ void LittleFileSystem::df()
                    p->type, p->subtype, p->address, p->size, p->label);
     } while (pi = (esp_partition_next(pi)));
   }
-  outputStream->printf( "\r\n|HEAP     |       |          |   %d | ESP.getHeapSize |\r\n", ESP.getHeapSize());
-  outputStream->printf( "|Free heap|       |          |   %d | ESP.getFreeHeap |\r\n", ESP.getFreeHeap());
-  outputStream->printf( "|Psram    |       |          |   %d | ESP.PsramSize   |\r\n", ESP.getPsramSize());
-  outputStream->printf( "|Free Psrm|       |          |   %d | ESP.FreePsram   |\r\n", ESP.getFreePsram());
-  outputStream->printf( "|UsedPsram|       |          |   %d | Psram - FreeRam |\r\n", ESP.getPsramSize() - ESP.getFreePsram());
-  outputStream->printf( "|BlEh Size|       |          |   %d |\r\n", uxTaskGetStackHighWaterMark(h_pxblueToothTask));
+  //outputStream->printf( "\r\n|HEAP     |       |          |   %ld | ESP.getHeapSize |\r\n", ESP.getHeapSize());
+  outputStream->printf( "|Free heap|       |          |   %ld | ESP.getFreeHeap |\r\n", ESP.getFreeHeap());
+  // outputStream->printf( "|Psram    |       |          |   %ld | ESP.PsramSize   |\r\n", ESP.getPsramSize());
+  // outputStream->printf( "|Free Psrm|       |          |   %ld | ESP.FreePsram   |\r\n", ESP.getFreePsram());
+  // outputStream->printf( "|UsedPsram|       |          |   %ld | Psram - FreeRam |\r\n", ESP.getPsramSize() - ESP.getFreePsram());
+  outputStream->printf( "|BlEh Size|       |          |   %ld |\r\n", uxTaskGetStackHighWaterMark(h_pxblueToothTask));
+  outputStream->printf( "|Mod  Size|       |          |   %ld |\r\n", uxTaskGetStackHighWaterMark(h_modbusService));
+  outputStream->printf( "|Web  Size|       |          |   %ld |\r\n", uxTaskGetStackHighWaterMark(h_WebService));
+//
 }
 int LittleFileSystem::format()
 {

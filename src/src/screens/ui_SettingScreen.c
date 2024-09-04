@@ -68,7 +68,7 @@ void ui_SettingScreen_screen_init(void)
     lv_obj_set_style_border_width(ui_SetLeftPannel, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_TotalVoltage1 = lv_label_create(ui_SetLeftPannel);
-    lv_obj_set_height(ui_TotalVoltage1, lv_pct(80));
+    lv_obj_set_height(ui_TotalVoltage1, lv_pct(68));
     lv_obj_set_width(ui_TotalVoltage1, LV_SIZE_CONTENT);   /// 1
     lv_obj_set_x(ui_TotalVoltage1, 2);
     lv_obj_set_y(ui_TotalVoltage1, 9);
@@ -78,7 +78,9 @@ void ui_SettingScreen_screen_init(void)
 
     ui_Button2 = lv_btn_create(ui_SetLeftPannel);
     lv_obj_set_width(ui_Button2, 100);
-    lv_obj_set_height(ui_Button2, 30);
+    lv_obj_set_height(ui_Button2, 40);
+    lv_obj_set_x(ui_Button2, -5);
+    lv_obj_set_y(ui_Button2, -47);
     lv_obj_set_align(ui_Button2, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_Button2, LV_OBJ_FLAG_SCROLL_ON_FOCUS);     /// Flags
     lv_obj_clear_flag(ui_Button2, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
@@ -94,7 +96,7 @@ void ui_SettingScreen_screen_init(void)
 
     ui_SaveSettingButton = lv_btn_create(ui_SetLeftPannel);
     lv_obj_set_width(ui_SaveSettingButton, 100);
-    lv_obj_set_height(ui_SaveSettingButton, 30);
+    lv_obj_set_height(ui_SaveSettingButton, 40);
     lv_obj_set_x(ui_SaveSettingButton, -1);
     lv_obj_set_y(ui_SaveSettingButton, -39);
     lv_obj_set_align(ui_SaveSettingButton, LV_ALIGN_CENTER);

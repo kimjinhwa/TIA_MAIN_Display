@@ -1539,6 +1539,27 @@ void ui_MainScreen_screen_init(void)
     lv_obj_set_style_text_opa(ui_VersionLabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui_VersionLabel, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    ui_lblMessage = lv_label_create(ui_MainScreen);
+    lv_obj_set_width(ui_lblMessage, lv_pct(50));
+    lv_obj_set_height(ui_lblMessage, lv_pct(30));
+    lv_obj_set_x(ui_lblMessage, 50);
+    lv_obj_set_y(ui_lblMessage, 4);
+    lv_obj_set_align(ui_lblMessage, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_lblMessage, "Comm\nMessage\n");
+    lv_label_set_recolor(ui_lblMessage, "true");
+    lv_obj_add_flag(ui_lblMessage, LV_OBJ_FLAG_HIDDEN);     /// Flags
+    lv_obj_set_style_text_color(ui_lblMessage, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_lblMessage, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui_lblMessage, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui_lblMessage, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_lblMessage, &ui_font_Arial, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_lblMessage, lv_color_hex(0xBDF2F5), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_lblMessage, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui_lblMessage, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui_lblMessage, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui_lblMessage, 10, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui_lblMessage, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+
     lv_obj_add_event_cb(ui_ChangeModule, ui_event_ChangeModule, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_Button1, ui_event_Button1, LV_EVENT_ALL, NULL);
 

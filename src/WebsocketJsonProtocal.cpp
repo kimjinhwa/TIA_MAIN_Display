@@ -69,6 +69,7 @@ void setCelldataToDisplay(uint8_t display);
 static uint8_t nowWindows = MODULE_1;
 
 extern initialRomData initRomData;
+bool isServerError=false;
 #include <EEPROM.h>
 void saveButtenEvent(lv_event_t * e)
 {
@@ -88,7 +89,6 @@ void saveButtenEvent(lv_event_t * e)
 void ChangeModuleEvent(lv_event_t * e)
 {
   // Your code here
-  ui_Label9;
   String cmpText(lv_label_get_text(ui_Label9));
   if (cmpText.compareTo("SET_2") == 0){
     lv_label_set_text(ui_Label9, "SET_1"); // 이것은 바꿔야 할 화면 이므로 현재화면이 아니라 넘길 화면이다
@@ -321,6 +321,27 @@ void handleData(ModbusMessage response, uint32_t token)
   };//Impedance
   if (token == 'E')
   {
+    uint8_t temp;
+    for (size_t i = 40; i < selectedData.size()-1; i+=2) {
+      temp =  selectedData[i];
+      selectedData[i]=selectedData[i+1];
+      selectedData[i+1]=temp;
+    }  
+    Serial.println();
+    String strTemp;
+    for (size_t i = 41; i < selectedData.size(); i++) {
+        if(i%10== 0) Serial.println();
+        Serial.printf("%d: %02x (%c) ",i,selectedData[i],selectedData[i]);
+        if(selectedData[i]!=0x00) strTemp += (char)selectedData[i];
+        else break;
+    }
+    isServerError=selectedData[40];
+    Serial.println();
+    Serial.printf("\n%d %s ",isServerError,strTemp.c_str());
+    Serial.println();
+    lv_label_set_text(ui_lblMessage, strTemp.c_str());
+    if(isServerError) lv_obj_clear_flag(ui_lblMessage, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(ui_lblMessage, LV_OBJ_FLAG_HIDDEN);     /// Flags
     // for (int i = 0; i < 10; i++)
     // {
     //   ESP_LOGI("RECEIVE", "TIME=%d", (int16_t)integerArray[i]);
@@ -385,7 +406,7 @@ const long interval_5s = 5000;
 static unsigned long previousMillis_60 = 0;  
 const long interval_60s = 60000;  
 
-char requestContent[4]={'V','T','I','E'};
+char requestContent[4]={'E','V','T','I'};
 uint16_t requestContentLoop=0;
 
 void modbusService(void *parameters)
@@ -426,17 +447,10 @@ void modbusService(void *parameters)
       else if (requestContent[requestContentLoop] == 'E')
       {
         requestAddress = 120;
-        requestLength = 10;
-        // err = MB.addRequest('E', 1, READ_INPUT_REGISTER, requestAddress, requestLength);
-        // if (err != SUCCESS)
-        // {
-        //   ModbusError e(err);
-        //   ESP_LOGI("MODBUS","Error creating request: %02X - %s\n", (int)e, (const char *)e);
-        // }
+        requestLength = 40;
       }
       time_t startTime = millis(); 
       time_t endTime;
-      //err = MB.addRequest(requestContent[requestContentLoop], 1, READ_INPUT_REGISTER, requestAddress, requestLength);
       int loopCount=0;
       MB.setTimeout(200);
       do
@@ -445,7 +459,15 @@ void modbusService(void *parameters)
         if (response.getError() == SUCCESS)
         {
           handleData(response, requestContent[requestContentLoop]);
+          strStatus += " OK";
+          lv_label_set_text(ui_CompanyLabel1, strStatus.c_str() );
           break;
+        }
+        else 
+        {
+          strStatus = "Retry ";
+          strStatus += loopCount;
+          lv_label_set_text(ui_CompanyLabel1, strStatus.c_str() );
         }
         if(loopCount++ >30)break;// 3초
         esp_task_wdt_reset();
@@ -454,19 +476,19 @@ void modbusService(void *parameters)
       endTime = millis();
       ESP_LOGI("MODBUS", "syncRequest time %d Error %d(%d)", 
         endTime - startTime,response.getError(),loopCount);
-      // if (err != SUCCESS)
-      // {
-      //   ModbusError e(err);
-      //   ESP_LOGI("MODBUS","Error creating request: %02X - %s\n", (int)e, (const char *)e);
-      // }
-      requestContentLoop = requestContentLoop+1;
-      previousMillis_3 = now;
+      //서버에러가 발생하면 같은 통신을 반복한다 
+      if(!isServerError)
+        requestContentLoop = requestContentLoop+1;
+      else 
+        delay(1000);
+      previousMillis_3 = millis();
     }
     if (now - previousMillis_1 >= interval_1s)
     {
       timeDisplay();
       previousMillis_1 = now;
     }
+    esp_task_wdt_reset();
     vTaskDelay(20);
   };
 }

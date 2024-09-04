@@ -53,7 +53,7 @@ const char* loginIndex =
 const char* serverIndex =
 "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
 "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
-   "<input type='file' name='update'>"
+   "<input type='file' accept='.bin' name='update'>"
         "<input type='submit' value='Update'>"
     "</form>"
  "<div id='prg'>progress: 0%</div>"
@@ -175,5 +175,14 @@ void wifiOTAsetup(void)
 
 void wifiOtaloop(void) {
   server.handleClient();
-  delay(1);
+  delay(10);
+}
+void wifiWebService(void *parameter)
+{
+  wifiOTAsetup();
+  for (;;)
+  {
+    server.handleClient();
+    delay(10);
+  }
 }

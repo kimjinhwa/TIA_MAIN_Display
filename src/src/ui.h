@@ -137,6 +137,7 @@ extern lv_obj_t * ui_MainBottomPannel;
 extern lv_obj_t * ui_CompanyLabel;
 extern lv_obj_t * ui_CompanyLabel1;
 extern lv_obj_t * ui_VersionLabel;
+extern lv_obj_t * ui_lblMessage;
 // SCREEN: ui_SettingScreen
 void ui_SettingScreen_screen_init(void);
 extern lv_obj_t * ui_SettingScreen;

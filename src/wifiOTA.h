@@ -8,7 +8,7 @@
 #include <ESPmDNS.h>
 #include <Update.h>
 
-void wifiOTAsetup(void) ;
+void wifiWebService(void *parameter);
 void wifiOtaloop(void) ;
 #endif
 

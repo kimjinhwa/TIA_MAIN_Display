@@ -27,7 +27,7 @@ uint16_t lcdOntime=0;
 //BluetoothSerial SerialBT;
 LittleFileSystem lsFile;
 TaskHandle_t *h_pxblueToothTask;
-
+extern bool isServerError;
 static uint32_t screenWidth;
 static uint32_t screenHeight;
 
@@ -36,6 +36,7 @@ static lv_color_t *disp_draw_buf;
 static lv_disp_drv_t disp_drv;
 static unsigned long last_ms;
 TaskHandle_t h_modbusService;
+TaskHandle_t h_WebService;
 
 initialRomData initRomData;
 
@@ -123,6 +124,60 @@ void readnWriteEEProm()
   Serial.printf("\ninit data \n%d %d %d %d",initRomData.HighVoltage,initRomData.LowVoltage,initRomData.HighTemp,initRomData.HighImp);
 
 }
+void bootingReasonCheck()
+{
+  esp_reset_reason_t resetReson = esp_reset_reason();
+
+  String strReset[]{
+      // ESP_RST_UNKNOWN:
+      " Reset reason can not be determined",
+      // case ESP_RST_POWERON:
+      " Reset due to power-on event",
+      // case ESP_RST_EXT:
+      " Reset by external pin (not applicable for ESP32)",
+      // case ESP_RST_SW:
+      " Software reset via esp_restart",
+      // case ESP_RST_PANIC:
+      " Software reset due to exception/panic",
+      // case ESP_RST_INT_WDT:
+      " Reset (software or hardware) due to interrupt watchdog",
+      // case ESP_RST_TASK_WDT:
+      " Reset due to task watchdog",
+      // case ESP_RST_WDT:
+      " Reset due to other watchdogs",
+      // case ESP_RST_DEEPSLEEP:
+      " Reset after exiting deep sleep mode",
+      // case ESP_RST_BROWNOUT:
+      " Brownout reset (software or hardware)",
+      // case ESP_RST_SDIO:
+      " Reset over SDIO",
+  };
+
+  FILE *fp;
+  timeval tv;
+  struct tm *timeinfo;
+  gettimeofday(&tv, NULL);
+  timeinfo = localtime(&tv.tv_sec);
+  char timeString[30];
+  strftime(timeString, sizeof(timeString), "%Y-%m-%d %H:%M:%S", timeinfo);
+  String strReason = timeString;
+  strReason += strReset[resetReson];
+  strReason += "\n";
+  Serial.println("\n--------------------------------");
+  Serial.println(strReason.c_str());
+  Serial.println("--------------------------------");
+  fp = fopen("/spiffs/bootLog.txt", "a+");
+  if (fp == NULL)
+  {
+    Serial.printf("\ncellDataLogCreate Error");
+    return ;
+  }
+  fwrite(strReason.c_str(), strReason.length(), 1, fp);
+  fclose(fp);
+  Serial.printf("\nRead LogFile\n");
+  lsFile.cat("/spiffs/bootLog.txt");
+  //fp = fopen("/spiffs/bootLog.txt", "a+");
+}
 void setup()
 {
   EEPROM.begin(100);
@@ -131,7 +186,7 @@ void setup()
   Serial1.begin(BAUDRATEDEF,SERIAL_8N1,18,17);
   //SerialBT.begin("TIMP_DISPLAY");
   lsFile.littleFsInitFast(0);
-
+  bootingReasonCheck();
   // while (!Serial);
   Serial.println("LVGL Benchmark Demo");
 
@@ -214,11 +269,14 @@ void setup()
   tv.tv_sec = mktime(&tm);
   tv.tv_usec = 0;
   settimeofday(&tv, NULL);
-#ifdef USEWIFI
-  wifiOTAsetup() ;
-#endif
+// 3884 heap byte
   xTaskCreate(blueToothTask,"blueToothTask",6000,NULL,1,h_pxblueToothTask);
+// 4060 heap byte
   xTaskCreate(modbusService, "modbusService", 6000, NULL, 1, &h_modbusService);
+#ifdef USEWIFI
+// 3552 heap byte
+  xTaskCreate(wifiWebService, "wifiWebService", 6000, NULL, 1, &h_WebService);
+#endif
   //i2csetup();
   esp_task_wdt_init(WDT_TIMEOUT, true);
   esp_task_wdt_add(NULL);

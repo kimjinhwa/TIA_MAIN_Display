@@ -119,6 +119,7 @@ lv_obj_t * ui_MainBottomPannel;
 lv_obj_t * ui_CompanyLabel;
 lv_obj_t * ui_CompanyLabel1;
 lv_obj_t * ui_VersionLabel;
+lv_obj_t * ui_lblMessage;
 
 
 // SCREEN: ui_SettingScreen
