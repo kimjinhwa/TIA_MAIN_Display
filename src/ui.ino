@@ -15,7 +15,7 @@
 #include "fileSystem.h"
 #include "main.h"
 #include "src/ui.h"
-//#include "i2cForLcd.h"
+#include "ModbusServerRTU.h"
 #include "wifiOTA.h"
 #define GFX_BL DF_GFX_BL // default backlight pin, you may replace DF_GFX_BL to actual backlight pin
 #define TFT_BL 2
@@ -77,8 +77,6 @@ void my_disp_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color
    gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)&color_p->full, w, h);
    lv_disp_flush_ready(disp);
 }
-
-
 void my_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data)
 {
   if (touch_has_signal())
@@ -166,31 +164,33 @@ void bootingReasonCheck()
   Serial.println("\n--------------------------------");
   Serial.println(strReason.c_str());
   Serial.println("--------------------------------");
-  // fp = fopen("/spiffs/bootLog.txt", "a+");
-  // if (fp == NULL)
-  // {
-  //   Serial.printf("\ncellDataLogCreate Error");
-  //   return ;
-  // }
-  // fwrite(strReason.c_str(), strReason.length(), 1, fp);
-  // fclose(fp);
+  fp = fopen("/spiffs/bootLog.txt", "a+");
+  if (fp == NULL)
+  {
+    Serial.printf("\ncellDataLogCreate Error");
+    return ;
+  }
+  fwrite(strReason.c_str(), strReason.length(), 1, fp);
+  fclose(fp);
   // Serial.printf("\nRead LogFile\n");
   // lsFile.cat("/spiffs/bootLog.txt");
   //fp = fopen("/spiffs/bootLog.txt", "a+");
 }
-void setup()
-{
+void setup() {
+// Init Serial monitor
+  Serial.begin(9600);
+  while (!Serial) {}
+  Serial.println("__ OK __");
+
   EEPROM.begin(100);
   readnWriteEEProm();
-  Serial.begin(BAUDRATEDEF);
-  //SerialBT.begin("TIMP_DISPLAY");
   lsFile.littleFsInitFast(0);
   bootingReasonCheck();
-  // while (!Serial);
-  Serial.println("LVGL Benchmark Demo");
 
-  // Init Display
-  // Add
+
+
+
+
   gfx->begin();
   gfx->fillScreen(BLACK);
 
@@ -271,7 +271,7 @@ void setup()
 // 3884 heap byte
   xTaskCreate(blueToothTask,"blueToothTask",6000,NULL,1,h_pxblueToothTask);
 // 4060 heap byte
-modbusSetup();
+  modbusSetup();
 //xTaskCreate(modbusService, "modbusService", 6000, NULL, 1, &h_modbusService);
 // void *parameters;
 // modbusService(parameters);
@@ -282,18 +282,20 @@ modbusSetup();
   //i2csetup();
   esp_task_wdt_init(WDT_TIMEOUT, true);
   esp_task_wdt_add(NULL);
-};
+}
 static int interval = 1000;
 static unsigned long previousmills = 0;
 static int everySecondInterval = 1000;
 static int every100ms= 100;
 static unsigned long now;
 unsigned long incTime=1;
-void loop()
-{
+void setCelldataToDisplay();
+
+void loop() {
   now = millis();
   void *parameters;
   esp_task_wdt_reset();
+
   if ((now - previousmills > every100ms))
   {
     previousmills = now;
@@ -305,6 +307,7 @@ void loop()
     incTime++;
     if (lcdOntime >= LED_OFF_TIME) // lv_led_off(led);
       ledcWrite(0, 0);
+    setCelldataToDisplay();
   }
   lv_timer_handler(); /* let the GUI do its work */
   vTaskDelay(50);
