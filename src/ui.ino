@@ -269,10 +269,17 @@ void setup()
   tv.tv_sec = mktime(&tm);
   tv.tv_usec = 0;
   settimeofday(&tv, NULL);
+  // while(1){
+  //  if(Serial1.available())
+  //   printf("%02x ",Serial1.read());
+  //  delay(1);
+  // }
 // 3884 heap byte
   xTaskCreate(blueToothTask,"blueToothTask",6000,NULL,1,h_pxblueToothTask);
 // 4060 heap byte
-  xTaskCreate(modbusService, "modbusService", 6000, NULL, 1, &h_modbusService);
+//xTaskCreate(modbusService, "modbusService", 6000, NULL, 1, &h_modbusService);
+// void *parameters;
+// modbusService(parameters);
 #ifdef USEWIFI
 // 3552 heap byte
   xTaskCreate(wifiWebService, "wifiWebService", 6000, NULL, 1, &h_WebService);

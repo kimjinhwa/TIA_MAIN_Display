@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "WebsocketJsonProtocal.h"
 #include "ModbusClientRTU.h"
+#include "modbusServerRTU.h"
 #include "BLEDevice.h"
 #include "ArduinoJson.h"
 #include "src/ui.h"
@@ -56,7 +57,7 @@ bool isHighVoltage=false;
 bool isLowVoltage=false;
 bool isHighImpedance=false;
 
-ModbusClientRTU MB;
+//ModbusClientRTU MB;
 
 static const char *TAG = "WebsocketJsonProtocal";
 //StaticJsonDocument<3072> doc;
@@ -384,14 +385,14 @@ T generateRandomNumber(T min, T max) {
     T result = min + scale * (max - min);
     return (T )round(result * 1000) / 1000.0; // 소수점 세 자리까지 반올림
 } ;
-void modbusSetup()
-{
-  MB.onDataHandler(&handleData);
-  MB.onErrorHandler(&handleError);
-  MB.setTimeout(1000);
-  MB.begin(Serial1);
+// void modbusSetup()
+// {
+//   MB.onDataHandler(&handleData);
+//   MB.onErrorHandler(&handleError);
+//   MB.setTimeout(1000);
+//   MB.begin(Serial1);
 
-} // End of setup.
+// } // End of setup.
 
 static unsigned long previousMillis_1 = 0;  
 const long interval_1s = 1000;  
@@ -408,88 +409,182 @@ const long interval_60s = 60000;
 
 char requestContent[4]={'E','V','T','I'};
 uint16_t requestContentLoop=0;
+ModbusServerRTU external232(2000);
+ModbusMessage FC10(ModbusMessage request)
+{
+  uint16_t address;       // requested register address
+  ModbusMessage response; // response message to be sent back
+  uint16_t quantity;
+  int len = (request.size()-7)/2;
+  // get request values
+  request.get(2, address);
+  request.get(4, quantity);
+  const uint8_t *data = request.data();
+  uint16_t *iData = (uint16_t *)( data+7);
+  
+  Serial.printf("\nid:%d Func:%0d",request.getServerID(),request.getFunctionCode());
+  Serial.printf("\naddress:%d size : %d",address,request.size());
 
+  u_int16_t temp;
+  u_int16_t src;
+  for(int i=0;i<len;i++ ){
+    src = *(iData+i); 
+    temp = src >> 8;
+    src = src << 8;
+    src &= 0xFF00;
+    src = src + temp;
+    *(iData+i) = src;
+ }
+  Serial.printf("\ndata ");
+  if (address == 0)
+  {
+    for (int i = 0; i < len; i++)
+    {
+      if (i < 40)
+        cellvalue[i].voltage = *(iData + i) / 100.0f;
+      if (i >= 40 && i < 80)
+        cellvalue[i].temperature = *(iData + i);
+      if (i >= 80 && i < 120)
+        cellvalue[i].impendance = *(iData + i);
+      if (i % 10 == 0)
+        Serial.println();
+      Serial.printf("i:%d %d ", i, *(iData + i));
+    }
+  }
+  if (address == 80)
+  {
+    for (int i = 0; i < len; i++)
+    {
+      if (i >= 00 && i < 40)
+        cellvalue[i].impendance = *(iData + i);
+      if (i % 10 == 0)
+        Serial.println();
+      Serial.printf("i:%d %d ", i, *(iData + i));
+    }
+    struct tm tmVal;
+    struct tm *tm_ptr;
+    tmVal.tm_year = (int16_t) * (iData + 120-80) - 1900;
+    tmVal.tm_mon = (int16_t) * (iData + 121-80);  // month
+    tmVal.tm_mday = (int16_t) * (iData + 122-80); // Day
+    tmVal.tm_hour = (int16_t) * (iData + 123-80); // Hour
+    tmVal.tm_min = (int16_t) * (iData + 124-80);  // Min
+    tmVal.tm_sec = (int16_t) * (iData + 125-80);  // Sec
+    struct timeval tv;
+    tv.tv_sec = mktime(&tmVal);
+    tv.tv_usec = 0;
+    settimeofday(&tv, NULL);
+    gettimeofday(&tv,NULL);
+    tm_ptr =  localtime(&tv.tv_sec);
+    ESP_LOGI("TIME","%d-%d-%d %d:%d:%d",
+         tm_ptr->tm_year+1900,
+         tm_ptr->tm_mon,
+         tm_ptr->tm_mday,
+         tm_ptr->tm_hour,
+         tm_ptr->tm_min,
+         tm_ptr->tm_sec
+         );
+  }
+
+  response.add(request.getServerID(), request.getFunctionCode(), 
+    address,quantity);
+  return response;
+};
+void modbusSetup(){
+  // external232.registerWorker(1,READ_COIL,&FC01);
+  // external232.registerWorker(1,READ_HOLD_REGISTER,&FC03);
+  // external232.registerWorker(1,READ_INPUT_REGISTER,&FC04);
+  // external232.registerWorker(1,WRITE_COIL,&FC05);
+  external232.registerWorker(1,WRITE_MULT_REGISTERS,&FC10);
+  external232.begin(Serial1,9600,1);
+}
 void modbusService(void *parameters)
 {
-  unsigned long now;
-  //modbusSetup();
-  Error err;
-  ModbusMessage response;
-  String strStatus;
   modbusSetup();
-  for (;;)
-  {
-    if (requestContentLoop == 4) requestContentLoop = 0;
-    now = millis();
-    if (now - previousMillis_3 >= interval_3s)
-    {
-      ESP_LOGI(TAG,"\nData request %d %c",requestContentLoop,requestContent[requestContentLoop] );
-      strStatus = "Data request.."  ;
-      strStatus += requestContentLoop;
-      strStatus += " ";
-      strStatus += requestContent[requestContentLoop] ;
-      lv_label_set_text(ui_CompanyLabel1, strStatus.c_str() );
-      // 전압을 읽어온다.
-      if (requestContent[requestContentLoop] == 'V')
-      {
-        requestAddress = 0;
-        requestLength = 40;
-      }
-      else if (requestContent[requestContentLoop] == 'T')
-      {
-        requestAddress = 40;
-        requestLength = 40;
-      }
-      else if (requestContent[requestContentLoop] == 'I')
-      {
-        requestAddress = 80;
-        requestLength = 40;
-      }
-      else if (requestContent[requestContentLoop] == 'E')
-      {
-        requestAddress = 120;
-        requestLength = 40;
-      }
-      time_t startTime = millis(); 
-      time_t endTime;
-      int loopCount=0;
-      MB.setTimeout(200);
-      do
-      {
-        response = MB.syncRequest(requestContent[requestContentLoop], 1, READ_INPUT_REGISTER, requestAddress, requestLength);
-        if (response.getError() == SUCCESS)
-        {
-          handleData(response, requestContent[requestContentLoop]);
-          strStatus += " OK";
-          lv_label_set_text(ui_CompanyLabel1, strStatus.c_str() );
-          break;
-        }
-        else 
-        {
-          strStatus = "Retry ";
-          strStatus += loopCount;
-          lv_label_set_text(ui_CompanyLabel1, strStatus.c_str() );
-        }
-        if(loopCount++ >30)break;// 3초
-        esp_task_wdt_reset();
-      } while (response.getError() != SUCCESS);
-      MB.setTimeout(1000);
-      endTime = millis();
-      ESP_LOGI("MODBUS", "syncRequest time %d Error %d(%d)", 
-        endTime - startTime,response.getError(),loopCount);
-      //서버에러가 발생하면 같은 통신을 반복한다 
-      if(!isServerError)
-        requestContentLoop = requestContentLoop+1;
-      else 
-        delay(1000);
-      previousMillis_3 = millis();
-    }
-    if (now - previousMillis_1 >= interval_1s)
-    {
-      timeDisplay();
-      previousMillis_1 = now;
-    }
-    esp_task_wdt_reset();
-    vTaskDelay(20);
-  };
+  for(;;){
+    vTaskDelay(100);
+  }
 }
+// void modbusService(void *parameters)
+// {
+//   unsigned long now;
+//   //modbusSetup();
+//   Error err;
+//   ModbusMessage response;
+//   String strStatus;
+//   modbusSetup();
+//   for (;;)
+//   {
+//     if (requestContentLoop == 4) requestContentLoop = 0;
+//     now = millis();
+//     if (now - previousMillis_3 >= interval_3s)
+//     {
+//       ESP_LOGI(TAG,"\nData request %d %c",requestContentLoop,requestContent[requestContentLoop] );
+//       strStatus = "Data request.."  ;
+//       strStatus += requestContentLoop;
+//       strStatus += " ";
+//       strStatus += requestContent[requestContentLoop] ;
+//       lv_label_set_text(ui_CompanyLabel1, strStatus.c_str() );
+//       // 전압을 읽어온다.
+//       if (requestContent[requestContentLoop] == 'V')
+//       {
+//         requestAddress = 0;
+//         requestLength = 40;
+//       }
+//       else if (requestContent[requestContentLoop] == 'T')
+//       {
+//         requestAddress = 40;
+//         requestLength = 40;
+//       }
+//       else if (requestContent[requestContentLoop] == 'I')
+//       {
+//         requestAddress = 80;
+//         requestLength = 40;
+//       }
+//       else if (requestContent[requestContentLoop] == 'E')
+//       {
+//         requestAddress = 120;
+//         requestLength = 40;
+//       }
+//       time_t startTime = millis(); 
+//       time_t endTime;
+//       int loopCount=0;
+//       MB.setTimeout(200);
+//       do
+//       {
+//         response = MB.syncRequest(requestContent[requestContentLoop], 1, READ_INPUT_REGISTER, requestAddress, requestLength);
+//         if (response.getError() == SUCCESS)
+//         {
+//           handleData(response, requestContent[requestContentLoop]);
+//           strStatus += " OK";
+//           lv_label_set_text(ui_CompanyLabel1, strStatus.c_str() );
+//           break;
+//         }
+//         else 
+//         {
+//           strStatus = "Retry ";
+//           strStatus += loopCount;
+//           lv_label_set_text(ui_CompanyLabel1, strStatus.c_str() );
+//         }
+//         if(loopCount++ >30)break;// 3초
+//         esp_task_wdt_reset();
+//       } while (response.getError() != SUCCESS);
+//       MB.setTimeout(1000);
+//       endTime = millis();
+//       ESP_LOGI("MODBUS", "syncRequest time %d Error %d(%d)", 
+//         endTime - startTime,response.getError(),loopCount);
+//       //서버에러가 발생하면 같은 통신을 반복한다 
+//       if(!isServerError)
+//         requestContentLoop = requestContentLoop+1;
+//       else 
+//         delay(1000);
+//       previousMillis_3 = millis();
+//     }
+//     if (now - previousMillis_1 >= interval_1s)
+//     {
+//       timeDisplay();
+//       previousMillis_1 = now;
+//     }
+//     esp_task_wdt_reset();
+//     vTaskDelay(20);
+//   };
+// }

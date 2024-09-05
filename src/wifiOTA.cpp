@@ -1,4 +1,5 @@
 #include "wifiOTA.h"
+#include <esp_task_wdt.h>
 
 static const char *host= "esp32";
 static const char *ssid = "iptime_mbhong";
@@ -182,6 +183,7 @@ void wifiWebService(void *parameter)
   wifiOTAsetup();
   for (;;)
   {
+    esp_task_wdt_reset();
     server.handleClient();
     delay(10);
   }

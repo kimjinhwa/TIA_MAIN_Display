@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <BluetoothSerial.h>
 #include "filesystem.h"
+#include <esp_task_wdt.h>
 
 
 extern BluetoothSerial SerialBT;
@@ -233,6 +234,7 @@ void blueToothTask(void *parameter)
   simpleCli.outputStream = &Serial;
   for (;;)
   {
+    esp_task_wdt_reset();
     readInputSerial();
     now = millis();
     if ((now - previousmills > everySecondInterval))
