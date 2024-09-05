@@ -166,16 +166,16 @@ void bootingReasonCheck()
   Serial.println("\n--------------------------------");
   Serial.println(strReason.c_str());
   Serial.println("--------------------------------");
-  fp = fopen("/spiffs/bootLog.txt", "a+");
-  if (fp == NULL)
-  {
-    Serial.printf("\ncellDataLogCreate Error");
-    return ;
-  }
-  fwrite(strReason.c_str(), strReason.length(), 1, fp);
-  fclose(fp);
-  Serial.printf("\nRead LogFile\n");
-  lsFile.cat("/spiffs/bootLog.txt");
+  // fp = fopen("/spiffs/bootLog.txt", "a+");
+  // if (fp == NULL)
+  // {
+  //   Serial.printf("\ncellDataLogCreate Error");
+  //   return ;
+  // }
+  // fwrite(strReason.c_str(), strReason.length(), 1, fp);
+  // fclose(fp);
+  // Serial.printf("\nRead LogFile\n");
+  // lsFile.cat("/spiffs/bootLog.txt");
   //fp = fopen("/spiffs/bootLog.txt", "a+");
 }
 void setup()
@@ -183,7 +183,6 @@ void setup()
   EEPROM.begin(100);
   readnWriteEEProm();
   Serial.begin(BAUDRATEDEF);
-  Serial1.begin(BAUDRATEDEF,SERIAL_8N1,18,17);
   //SerialBT.begin("TIMP_DISPLAY");
   lsFile.littleFsInitFast(0);
   bootingReasonCheck();
@@ -269,14 +268,10 @@ void setup()
   tv.tv_sec = mktime(&tm);
   tv.tv_usec = 0;
   settimeofday(&tv, NULL);
-  // while(1){
-  //  if(Serial1.available())
-  //   printf("%02x ",Serial1.read());
-  //  delay(1);
-  // }
 // 3884 heap byte
   xTaskCreate(blueToothTask,"blueToothTask",6000,NULL,1,h_pxblueToothTask);
 // 4060 heap byte
+modbusSetup();
 //xTaskCreate(modbusService, "modbusService", 6000, NULL, 1, &h_modbusService);
 // void *parameters;
 // modbusService(parameters);
@@ -299,7 +294,6 @@ void loop()
   now = millis();
   void *parameters;
   esp_task_wdt_reset();
-  //modbusService(parameters);
   if ((now - previousmills > every100ms))
   {
     previousmills = now;

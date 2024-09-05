@@ -490,12 +490,14 @@ ModbusMessage FC10(ModbusMessage request)
   return response;
 };
 void modbusSetup(){
+  RTUutils::prepareHardwareSerial(Serial1);
+  Serial1.begin(BAUDRATEDEF,SERIAL_8N1,18,17);
   // external232.registerWorker(1,READ_COIL,&FC01);
   // external232.registerWorker(1,READ_HOLD_REGISTER,&FC03);
   // external232.registerWorker(1,READ_INPUT_REGISTER,&FC04);
   // external232.registerWorker(1,WRITE_COIL,&FC05);
   external232.registerWorker(1,WRITE_MULT_REGISTERS,&FC10);
-  external232.begin(Serial1,9600,1);
+  //external232.begin(Serial1,9600);
 }
 void modbusService(void *parameters)
 {
