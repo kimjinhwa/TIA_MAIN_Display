@@ -424,6 +424,8 @@ ModbusMessage FC10(ModbusMessage request)
     char *temp = (char *)(iData + 21);
     char *strTemp = temp;
     strServerMessage = strTemp;
+    // ESP_LOGI("TEST","isServerError -------->%d %s",
+    //   isServerError,strServerMessage );
 
     struct tm tmVal;
     struct tm *tm_ptr;
