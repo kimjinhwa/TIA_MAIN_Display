@@ -1,6 +1,5 @@
 .pio
 build
-lib/lvgl
 .vscode
 test
 .gitignore

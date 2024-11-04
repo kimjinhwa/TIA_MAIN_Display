@@ -305,8 +305,8 @@ void loop() {
   {
     lcdOntime++;
     incTime++;
-    if (lcdOntime >= LED_OFF_TIME) // lv_led_off(led);
-      ledcWrite(0, 0);
+    // if (lcdOntime >= LED_OFF_TIME) // lv_led_off(led);
+    //   ledcWrite(0, 0);
     setCelldataToDisplay();
   }
   lv_timer_handler(); /* let the GUI do its work */
